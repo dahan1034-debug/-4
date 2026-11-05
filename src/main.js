@@ -10,15 +10,21 @@ import { CountermeasureSystem } from './weapons/countermeasures.js';
 import { SAMSite, EnemyInterceptor } from './defense/aiDefenses.js';
 import { RadarWarningReceiver } from './defense/rwr.js';
 import { HUD } from './ui/hud.js';
+import { RadarScope } from './ui/radar.js';
+import { UpgradeSystem } from './upgrades/upgradeSystem.js';
 import { createBase } from './mission/mission.js';
 
 const root = document.getElementById('game-root');
 const statusEl = document.getElementById('status');
 const messageEl = document.getElementById('message');
+const radarCanvas = document.getElementById('radar');
+const upgradePanel = document.getElementById('upgrade-panel');
+
 const engine = new Engine(root);
 const save = new SaveManager();
 const weather = createWeatherSystem();
 const rwr = new RadarWarningReceiver();
+const radar = new RadarScope(radarCanvas);
 const scene = engine.scene;
 const camera = engine.camera;
 const hud = new HUD(statusEl);
@@ -49,15 +55,19 @@ const countermeasures = new CountermeasureSystem(scene, 3);
 const saveData = save.load();
 const state = {
   mission: 'DESTROY SAM SITE',
-  score: 0,
+  score: saveData.bestScore || 0,
   health: 100,
   missiles: 8,
   missionCleared: false,
   missionComplete: false,
   gameOver: false,
   elapsed: 0,
-  rwr: { contacts: [], alert: false, primary: null }
+  credits: Math.max(0, Math.round(saveData.bestScore || 0) / 10),
+  rwr: { contacts: [], alert: false, primary: null },
+  upgrades: { engine: saveData.upgrades?.engine || 0, armor: saveData.upgrades?.armor || 0, missiles: saveData.upgrades?.missiles || 0 }
 };
+
+const upgrades = new UpgradeSystem(save, state, upgradePanel);
 
 function showMessage(text, color = 'rgba(17, 31, 44, 0.82)') {
   messageEl.textContent = text;
@@ -70,11 +80,11 @@ function showMessage(text, color = 'rgba(17, 31, 44, 0.82)') {
 function resetPlayer() {
   player.group.position.set(0, 850, -900);
   player.group.rotation.set(0, 0, 0);
-  player.flight.speed = 220;
+  player.flight.speed = 200 + state.upgrades.engine * 14;
   player.flight.throttle = 0.62;
-  player.health = state.health = 100;
+  player.health = state.health = 100 + state.upgrades.armor * 12;
   state.score = 0;
-  state.missiles = 8;
+  state.missiles = 8 + state.upgrades.missiles * 2;
   state.mission = 'DESTROY SAM SITE';
   state.missionCleared = false;
   state.missionComplete = false;
@@ -116,7 +126,7 @@ function updateHud() {
 
 function damagePlayer(amount) {
   if (state.gameOver) return;
-  state.health = Math.max(0, state.health - amount);
+  state.health = Math.max(0, state.health - amount * (1 - state.upgrades.armor * 0.06));
   player.health = state.health;
   if (state.health <= 0) {
     state.gameOver = true;
@@ -142,7 +152,7 @@ function firePlayerMissile() {
   }
   const origin = player.group.position.clone().add(new THREE.Vector3(0, 0, -18).applyQuaternion(player.group.quaternion));
   const track = () => target.kind === 'sam' ? sam.position.clone().add(new THREE.Vector3(0, 16, 0)) : enemies[target.id].group.position.clone();
-  playerMissiles.spawn(origin, track, 410, 8, { owner: 'player', targetKind: target.kind, targetId: target.id });
+  playerMissiles.spawn(origin, track, 410 + state.upgrades.missiles * 22, 8, { owner: 'player', targetKind: target.kind, targetId: target.id });
   state.missiles -= 1;
   showMessage(`FOX — ${target.kind.toUpperCase()} TRACKED`, 'rgba(100, 82, 17, 0.86)');
 }
@@ -161,6 +171,7 @@ function removeHitPlayerMissile(missile) {
       sam.alive = false;
       sam.group.visible = false;
       state.score += 500;
+      state.credits += 25;
       state.mission = 'RETURN TO FORWARD BASE';
       state.missionCleared = true;
       showMessage('SAM SITE DESTROYED — RETURN TO BASE', 'rgba(25, 84, 56, 0.88)');
@@ -177,6 +188,7 @@ function removeHitPlayerMissile(missile) {
         enemy.alive = false;
         enemy.group.visible = false;
         state.score += 200;
+        state.credits += 10;
         showMessage(`INTERCEPTOR ${enemy.index + 1} DESTROYED`, 'rgba(25, 84, 56, 0.86)');
       }
       playerMissiles.remove(missile);
@@ -193,6 +205,7 @@ engine.setUpdate((dt, input) => {
 
   if (input.isPressed('KeyR')) resetPlayer();
   if (input.isPressed('KeyH')) hud.toggle();
+  if (input.isPressed('KeyU')) upgrades.toggle();
   if (input.isPressed('KeyF')) firePlayerMissile();
   if (input.isPressed('KeyG')) {
     const velocity = new THREE.Vector3();
@@ -258,9 +271,22 @@ engine.setUpdate((dt, input) => {
   }
 
   if (state.missionCleared && !state.gameOver) state.score += dt * 2;
+
+  radar.draw({
+    x: player.group.position.x,
+    y: player.group.position.z,
+    heading: player.group.rotation.y
+  }, {
+    sam: sam.alive ? { x: sam.position.x, y: sam.position.z } : null,
+    enemies: enemies.filter(e => e.alive).map(e => ({ x: e.group.position.x, y: e.group.position.z })),
+    missiles: enemyMissiles.missiles.map(m => ({ x: m.position.x, y: m.position.z })),
+    contacts: state.rwr.contacts
+  });
+
   updateCamera(dt);
   updateHud();
 });
 
 engine.start();
+upgrades.syncPanel();
 resetPlayer();

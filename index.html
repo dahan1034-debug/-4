@@ -88,7 +88,7 @@
       position: fixed;
       right: 20px;
       bottom: 18px;
-      width: 260px;
+      width: 300px;
       padding: 10px 12px;
       background: rgba(5, 15, 20, 0.68);
       color: #dfeef8;
@@ -100,6 +100,62 @@
       pointer-events: none;
     }
 
+    #radar-wrap {
+      position: fixed;
+      right: 24px;
+      top: 18px;
+      width: 220px;
+      padding: 8px 8px 4px;
+      background: rgba(12, 18, 24, 0.72);
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.12);
+      z-index: 4;
+    }
+
+    #radar {
+      display: block;
+      width: 100%;
+      height: 220px;
+      background: rgba(8, 18, 24, 0.9);
+      border-radius: 6px;
+    }
+
+    #upgrade-panel {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: min(440px, 80vw);
+      background: rgba(12, 20, 30, 0.95);
+      border: 1px solid rgba(124, 222, 255, 0.22);
+      box-shadow: 0 20px 30px rgba(0,0,0,0.34);
+      border-radius: 12px;
+      padding: 16px;
+      z-index: 25;
+    }
+
+    #upgrade-panel[hidden] { display: none; }
+
+    .upgrade-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin: 10px 0;
+    }
+
+    .upgrade-btn {
+      flex: 1;
+      height: 38px;
+      border: 1px solid rgba(125, 233, 248, 0.35);
+      background: rgba(17, 36, 47, 0.88);
+      color: var(--text);
+      border-radius: 8px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .small { font-size: 12px; opacity: 0.8; }
     .ok { color: var(--ok); }
     .warn { color: var(--warn); }
     .danger { color: var(--danger); }
@@ -113,12 +169,26 @@
     <div id="status"></div>
   </div>
 
+  <div id="radar-wrap">
+    <canvas id="radar"></canvas>
+  </div>
+
   <div id="message"></div>
 
   <div id="controls">
     W/S pitch · A/D roll · Q/E yaw<br />
     Shift/Ctrl throttle · Space afterburner<br />
-    F fire missile · G flare · R reset · H HUD
+    F fire missile · G flare · U upgrades · R reset · H HUD
+  </div>
+
+  <div id="upgrade-panel" hidden>
+    <div class="small ok" data-stat="credits">Credits 0</div>
+    <div class="upgrade-row">
+      <button class="upgrade-btn" data-upgrade="engine">Engine 0 / 3</button>
+      <button class="upgrade-btn" data-upgrade="armor">Armor 0 / 3</button>
+      <button class="upgrade-btn" data-upgrade="missiles">Missiles 0 / 3</button>
+    </div>
+    <div class="small">Each upgrade costs 35 credits. Upgrades are stored in localStorage.</div>
   </div>
 
   <script type="module" src="./src/main.js"></script>
