@@ -7,7 +7,7 @@ export class MissileManager {
     this.missiles = [];
   }
 
-  spawn(origin, target, speed = 260, life = 6) {
+  spawn(origin, target, speed = 260, life = 6, options = {}) {
     const mesh = new THREE.Mesh(
       new THREE.ConeGeometry(1.8, 16, 10),
       new THREE.MeshStandardMaterial({
@@ -18,23 +18,22 @@ export class MissileManager {
         roughness: 0.4
       })
     );
-
     mesh.position.copy(origin);
-    mesh.quaternion.copy(new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, 0)));
 
-    const forward = new THREE.Vector3();
-    origin.clone().add(new THREE.Vector3(0, 0, -1));
-
-    const dir = target.clone().sub(origin).normalize();
-    mesh.lookAt(target);
-    mesh.rotateX(Math.PI / 2);
-
+    const targetRef = typeof target === 'function' ? target : () => target;
+    const initialTarget = targetRef();
+    const direction = initialTarget.clone().sub(origin).normalize();
+    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
     mesh.userData = {
       velocity: speed,
-      direction: dir,
-      target: target.clone(),
-      life: life,
-      homing: true
+      direction,
+      targetRef,
+      life,
+      seeker: Boolean(options.seeker),
+      owner: options.owner ?? 'unknown',
+      targetKind: options.targetKind ?? null,
+      targetId: options.targetId ?? null,
+      decoyTarget: null
     };
 
     this.scene.add(mesh);
@@ -42,25 +41,33 @@ export class MissileManager {
     return mesh;
   }
 
-  update(dt) {
+  update(dt, decoys = []) {
     for (let i = this.missiles.length - 1; i >= 0; i--) {
       const missile = this.missiles[i];
       const data = missile.userData;
-      const dir = data.target.clone().sub(missile.position).normalize();
-      if (data.homing) {
-        const current = new THREE.Vector3();
-        missile.getWorldDirection(current);
-        current.lerp(dir, 0.06).normalize();
-        missile.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), current);
-      }
-
-      missile.position.add(dir.clone().multiplyScalar(data.velocity * dt));
       data.life -= dt;
 
-      if (data.life <= 0) {
-        this.scene.remove(missile);
-        this.missiles.splice(i, 1);
+      if (data.seeker && !data.decoyTarget) {
+        const candidate = decoys.find(decoy => decoy.life > 0 && decoy.position.distanceTo(missile.position) < 280);
+        if (candidate && Math.random() < 0.22) data.decoyTarget = candidate.position;
       }
+
+      const target = data.decoyTarget ?? data.targetRef();
+      const desired = target.clone().sub(missile.position).normalize();
+      data.direction.lerp(desired, Math.min(1, dt * 2.4)).normalize();
+      missile.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), data.direction);
+      missile.position.addScaledVector(data.direction, data.velocity * dt);
+
+      if (data.life <= 0 || !Number.isFinite(missile.position.x)) this.remove(missile);
     }
+  }
+
+  remove(missile) {
+    const index = this.missiles.indexOf(missile);
+    if (index < 0) return;
+    this.scene.remove(missile);
+    missile.geometry.dispose();
+    missile.material.dispose();
+    this.missiles.splice(index, 1);
   }
 }
