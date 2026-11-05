@@ -3,8 +3,15 @@ export class UpgradeSystem {
     this.save = save;
     this.state = state;
     this.panel = panel;
-    this.levels = { engine: 0, armor: 0, missiles: 0 };
+    this.bind();
     this.syncPanel();
+  }
+
+  bind() {
+    if (!this.panel) return;
+    this.panel.querySelectorAll('.upgrade-btn').forEach((button) => {
+      button.addEventListener('click', () => this.apply(button.dataset.upgrade));
+    });
   }
 
   syncPanel() {
@@ -42,9 +49,10 @@ export class UpgradeSystem {
       this.state.missiles += 2;
     }
 
+    const data = this.save.load();
     this.save.save({
-      bestScore: this.state.score,
-      missionsCleared: this.save.load().missionsCleared || 0,
+      bestScore: data.bestScore || this.state.score,
+      missionsCleared: data.missionsCleared || 0,
       upgrades: this.state.upgrades,
       credits: this.state.credits
     });

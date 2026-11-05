@@ -1,16 +1,21 @@
 # Mountain Thunder — Eagles of the Peaks
 
-A browser-based Three.js flight-combat prototype. This phase adds tactical mission tooling and a persistent upgrade economy to heighten replayability and system depth.
+A browser-based Three.js flight-combat prototype with a multi-mode weapons system, a radar overlay, and an upgrade economy. This phase adds mission depth, weapon diversity, and more responsive combat feel.
 
 ## Run locally
 
-ES modules require an HTTP server instead of direct file opening.
+Because the project uses ES modules, serve it over HTTP:
 
 ```bash
+cd /path/to/project
 python3 -m http.server 8000
 ```
 
-Open `http://localhost:8000/`.
+Then open:
+
+```text
+http://localhost:8000/
+```
 
 ## Controls
 
@@ -19,20 +24,23 @@ Open `http://localhost:8000/`.
 - `Q / E`: yaw
 - `Shift / Ctrl`: throttle
 - `Space`: afterburner
-- `F`: fire missile
+- `V`: cycle weapon mode
+- `F`: fire selected weapon
 - `G`: release flare
-- `U`: open upgrades panel
-- `R`: reset mission
-- `H`: hide HUD
+- `U`: upgrade panel
+- `R`: restart mission
+- `H`: toggle HUD
 
-## Systems added in this phase
+## Weapon modes
 
-- Radar scope with bearings and inbound radar/weapon warnings
-- Upgrade panel with persistent localStorage tracking
-- Credits economy from successful mission payouts
-- Improved missile adjustments and target selection
-- Replay-friendly combat loop with better mission flow
+- `MISSILE`: guided strike weapon
+- `CANNON`: short burst anti-air fire
+- `ROCKET`: cluster payload for area pressure
 
-## Remarks
+## Gameplay loop
 
-This remains an arcade-style prototype. The simulation is optimized for browser performance and quick iteration rather than military realism.
+Destroy the forward SAM site, evade enemy missiles, and return to the runway to complete the mission. Credits are awarded for successful engagements and stage completion.
+
+## Notes
+
+This remains an arcade prototype tuned for browser performance, not a military-accurate flight sim. The underlying project is modular and built for future expansion with sound layers, campaign logic, and deeper cockpit detail.

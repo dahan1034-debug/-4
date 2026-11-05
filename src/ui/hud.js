@@ -23,10 +23,11 @@ export class HUD {
       `HULL ${Math.round(data.health)}%   MISSILES ${data.missiles}`,
       `RWR ${rwr}`,
       contacts,
+      `WEAPON ${data.mission.split('|').pop().trim()}`,
       `FLARES ${data.flares}`,
       `TARGET ${data.targetStatus}`,
       `SCORE ${Math.round(data.score)}`,
-      `MISSION ${data.mission}`
+      `MISSION ${data.mission.split('|')[0].trim()}`
     ].join('\n');
   }
 
