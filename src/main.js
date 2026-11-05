@@ -5,6 +5,7 @@ import { createTerrain, terrainHeightAt } from './world/terrain.js';
 import { createWeatherSystem } from './world/weather.js';
 import { createLighting } from './world/lighting.js';
 import { PlayerAircraft } from './aircraft/player.js';
+import { getAirframe, AIRFRAMES } from './aircraft/airframes.js';
 import { MissileManager } from './weapons/missiles.js';
 import { CountermeasureSystem } from './weapons/countermeasures.js';
 import { WeaponSystem } from './weapons/weaponSystem.js';
@@ -14,6 +15,7 @@ import { RadarWarningReceiver } from './defense/rwr.js';
 import { HUD } from './ui/hud.js';
 import { RadarScope } from './ui/radar.js';
 import { UpgradeSystem } from './upgrades/upgradeSystem.js';
+import { CampaignSystem } from './mission/campaign.js';
 import { createBase } from './mission/mission.js';
 
 const root = document.getElementById('game-root');
@@ -21,7 +23,7 @@ const statusEl = document.getElementById('status');
 const messageEl = document.getElementById('message');
 const radarCanvas = document.getElementById('radar');
 const upgradePanel = document.getElementById('upgrade-panel');
-
+const aircraftPanel = document.getElementById('aircraft-panel');
 const engine = new Engine(root);
 const save = new SaveManager();
 const weather = createWeatherSystem();
@@ -31,18 +33,19 @@ const audio = new AudioManager();
 const scene = engine.scene;
 const camera = engine.camera;
 const hud = new HUD(statusEl);
+const saveData = save.load();
+const campaign = new CampaignSystem(saveData.campaignStage || 0);
 
 scene.background = new THREE.Color(0x9cb8d1);
 scene.fog = new THREE.Fog(0x9cb8d1, 500, 20000);
 scene.add(createTerrain());
 createLighting(scene);
-
 const base = createBase();
 base.position.y = terrainHeightAt(0, 1400) + 2;
 scene.add(base);
 const runwayPosition = new THREE.Vector3(0, base.position.y + 6, 1400);
 
-const player = new PlayerAircraft();
+const player = new PlayerAircraft(saveData.airframe || 'strike');
 scene.add(player.group);
 const sam = new SAMSite(new THREE.Vector3(2000, terrainHeightAt(2000, 1200), 1200));
 scene.add(sam.group);
@@ -56,45 +59,80 @@ const playerMissiles = new MissileManager(scene, 0xffc97a);
 const enemyMissiles = new MissileManager(scene, 0xff4d5d);
 const countermeasures = new CountermeasureSystem(scene, 3);
 const weapons = new WeaponSystem(scene, playerMissiles);
-const saveData = save.load();
+const selectedAirframe = getAirframe(saveData.airframe || 'strike');
 const state = {
-  mission: 'DESTROY SAM SITE',
-  score: saveData.bestScore || 0,
-  health: 100,
-  missiles: 8,
+  mission: campaign.current().name,
+  score: 0,
+  health: selectedAirframe.hull,
+  maxHealth: selectedAirframe.hull,
+  missiles: selectedAirframe.missileCount,
+  rockets: 8,
+  kills: 0,
   missionCleared: false,
   missionComplete: false,
+  campaignComplete: false,
   gameOver: false,
   elapsed: 0,
-  credits: Number(saveData.credits || Math.max(0, Math.round((saveData.bestScore || 0) / 10))),
+  credits: Number(saveData.credits || 0),
   rwr: { contacts: [], alert: false, primary: null },
   upgrades: { engine: saveData.upgrades?.engine || 0, armor: saveData.upgrades?.armor || 0, missiles: saveData.upgrades?.missiles || 0 },
-  weaponMode: 'MISSILE'
+  weaponMode: 'MISSILE',
+  airframe: selectedAirframe.id
 };
-
-const upgrades = new UpgradeSystem(save, state, upgradePanel);
 
 function showMessage(text, color = 'rgba(17, 31, 44, 0.82)') {
   messageEl.textContent = text;
   messageEl.style.background = color;
   messageEl.style.display = 'block';
   clearTimeout(showMessage.timer);
-  showMessage.timer = setTimeout(() => { messageEl.style.display = 'none'; }, 1800);
+  showMessage.timer = setTimeout(() => { messageEl.style.display = 'none'; }, 2000);
 }
+
+function activeMission() { return campaign.current(); }
+
+function refreshAircraftPanel() {
+  if (!aircraftPanel) return;
+  aircraftPanel.querySelectorAll('[data-airframe]').forEach(button => {
+    button.classList.toggle('selected', button.dataset.airframe === state.airframe);
+  });
+  const description = aircraftPanel.querySelector('[data-airframe-description]');
+  if (description) description.textContent = player.airframe.description;
+}
+
+function selectAircraft(id) {
+  if (!AIRFRAMES[id] || state.missionCleared || state.missionComplete) return;
+  const airframe = player.setAirframe(id);
+  state.airframe = id;
+  state.maxHealth = airframe.hull + state.upgrades.armor * 12;
+  state.health = state.maxHealth;
+  state.missiles = airframe.missileCount + state.upgrades.missiles * 2;
+  player.health = state.health;
+  const data = save.load();
+  save.save({ ...data, airframe: id });
+  refreshAircraftPanel();
+  showMessage(`${airframe.name} SELECTED`);
+}
+
+aircraftPanel?.querySelectorAll('[data-airframe]').forEach(button => {
+  button.addEventListener('click', () => selectAircraft(button.dataset.airframe));
+});
 
 function resetPlayer() {
   player.group.position.set(0, 850, -900);
   player.group.rotation.set(0, 0, 0);
   player.flight.speed = 200 + state.upgrades.engine * 14;
   player.flight.throttle = 0.62;
-  player.health = state.health = 100 + state.upgrades.armor * 12;
+  state.maxHealth = player.airframe.hull + state.upgrades.armor * 12;
+  player.health = state.health = state.maxHealth;
   state.score = 0;
-  state.missiles = 8 + state.upgrades.missiles * 2;
-  state.mission = 'DESTROY SAM SITE';
+  state.kills = 0;
+  state.missiles = player.airframe.missileCount + state.upgrades.missiles * 2;
+  state.rockets = 8;
+  state.mission = activeMission().name;
   state.missionCleared = false;
   state.missionComplete = false;
+  state.campaignComplete = false;
   state.gameOver = false;
-  state.weaponMode = weapons.getCurrent();
   sam.alive = true;
   sam.health = 100;
   sam.group.visible = true;
@@ -103,7 +141,19 @@ function resetPlayer() {
     enemy.health = 60;
     enemy.group.visible = true;
   }
-  showMessage('MISSION ACTIVE — DESTROY THE SAM SITE');
+  refreshAircraftPanel();
+  showMessage(`${activeMission().name} — ${activeMission().briefing}`);
+}
+
+function resetTargets() {
+  sam.alive = true;
+  sam.health = 100;
+  sam.group.visible = true;
+  for (const enemy of enemies) {
+    enemy.alive = true;
+    enemy.health = 60;
+    enemy.group.visible = true;
+  }
 }
 
 function updateCamera(dt) {
@@ -124,7 +174,7 @@ function updateHud() {
     missiles: state.missiles,
     flares: countermeasures.remaining,
     rwr: state.rwr,
-    targetStatus: sam.alive ? 'SAM ACTIVE' : 'SAM DESTROYED',
+    targetStatus: sam.alive && activeMission().requiresSAM ? 'SAM ACTIVE' : `${state.kills}/${activeMission().requiredInterceptors} AIR KILLS`,
     score: state.score,
     mission: `${state.mission} | ${state.weaponMode}`
   });
@@ -142,29 +192,21 @@ function damagePlayer(amount) {
 }
 
 function acquireTarget() {
-  if (sam.alive) return { kind: 'sam', id: 'sam', position: sam.position };
+  const mission = activeMission();
+  if (mission.requiresSAM && sam.alive) return { kind: 'sam', id: 'sam', position: () => sam.position.clone().add(new THREE.Vector3(0, 16, 0)) };
   const live = enemies.filter(enemy => enemy.alive);
   if (!live.length) return null;
   live.sort((a, b) => a.group.position.distanceTo(player.group.position) - b.group.position.distanceTo(player.group.position));
-  return { kind: 'interceptor', id: live[0].index, position: live[0].group.position };
+  return { kind: 'interceptor', id: live[0].index, position: () => live[0].group.position.clone() };
 }
 
 function firePlayerWeapon() {
-  if (state.gameOver) return;
+  if (state.gameOver || state.missionCleared) return;
   const target = acquireTarget();
-  if (!target) {
-    showMessage('NO HOSTILE TARGET');
-    return;
-  }
-
-  const fired = weapons.fire(player, () => target.position, state, audio);
-  if (!fired) {
-    showMessage(`${state.weaponMode} EMPTY — RELOAD`, 'rgba(120, 80, 26, 0.8)');
-    return;
-  }
-
+  if (!target) { showMessage('NO HOSTILE TARGET'); return; }
+  const fired = weapons.fire(player, target, state, audio);
+  if (!fired) { showMessage(`${state.weaponMode} EMPTY`); return; }
   state.weaponMode = weapons.getCurrent();
-  showMessage(`${state.weaponMode} FIRED`, 'rgba(100, 82, 17, 0.86)');
 }
 
 function fireEnemyMissile(enemy) {
@@ -174,41 +216,63 @@ function fireEnemyMissile(enemy) {
   audio.playLaunch('missile');
 }
 
-function removeHitPlayerMissile(missile) {
+function completeObjectivesIfReady() {
+  if (state.missionCleared) return;
+  if (!campaign.objectiveComplete(sam.alive, state.kills)) return;
+  state.missionCleared = true;
+  state.mission = 'RETURN TO FORWARD BASE';
+  state.score += 350;
+  state.credits += activeMission().reward;
+  showMessage('OBJECTIVES COMPLETE — RETURN TO BASE', 'rgba(25, 84, 56, 0.88)');
+}
+
+function handlePlayerProjectileHit(missile) {
   const data = missile.userData;
-  if (data.targetKind === 'sam' && sam.alive && missile.position.distanceTo(sam.position) < 46) {
-    sam.health -= 35;
+  if (data.targetKind === 'sam' && sam.alive && missile.position.distanceTo(sam.position) < 52) {
+    sam.health -= data.seeker ? 35 : 18;
     if (sam.health <= 0) {
       sam.alive = false;
       sam.group.visible = false;
-      state.score += 500;
-      state.credits += 25;
-      state.mission = 'RETURN TO FORWARD BASE';
-      state.missionCleared = true;
-      showMessage('SAM SITE DESTROYED — RETURN TO BASE', 'rgba(25, 84, 56, 0.88)');
+      state.score += 250;
       audio.playExplosion();
     }
     playerMissiles.remove(missile);
-    return true;
+    return;
   }
 
   if (data.targetKind === 'interceptor') {
     const enemy = enemies[data.targetId];
-    if (enemy?.alive && missile.position.distanceTo(enemy.group.position) < 38) {
-      enemy.health -= 35;
+    if (enemy?.alive && missile.position.distanceTo(enemy.group.position) < 42) {
+      enemy.health -= data.seeker ? 35 : 22;
       if (enemy.health <= 0) {
         enemy.alive = false;
         enemy.group.visible = false;
-        state.score += 200;
-        state.credits += 10;
-        showMessage(`INTERCEPTOR ${enemy.index + 1} DESTROYED`, 'rgba(25, 84, 56, 0.86)');
+        state.kills += 1;
+        state.score += 180;
+        state.credits += 8;
         audio.playExplosion();
       }
       playerMissiles.remove(missile);
-      return true;
     }
   }
-  return false;
+}
+
+function advanceCampaign() {
+  const next = campaign.advance();
+  if (!next) {
+    state.campaignComplete = true;
+    state.mission = 'CAMPAIGN COMPLETE';
+    state.gameOver = true;
+    const data = save.load();
+    save.save({ ...data, campaignStage: 0, credits: state.credits, bestScore: Math.max(data.bestScore || 0, Math.round(state.score)) });
+    showMessage('CAMPAIGN COMPLETE — PRESS N TO FLY AGAIN', 'rgba(18, 62, 77, 0.9)');
+    return;
+  }
+  const data = save.load();
+  save.save({ ...data, campaignStage: campaign.stage, credits: state.credits });
+  resetTargets();
+  state.mission = next.name;
+  resetPlayer();
 }
 
 engine.setUpdate((dt, input) => {
@@ -217,13 +281,19 @@ engine.setUpdate((dt, input) => {
   countermeasures.update(dt);
 
   if (input.isPressed('KeyR')) resetPlayer();
+  if (input.isPressed('KeyN') && state.campaignComplete) {
+    campaign.restartCampaign();
+    resetTargets();
+    state.campaignComplete = false;
+    resetPlayer();
+  }
   if (input.isPressed('KeyH')) hud.toggle();
   if (input.isPressed('KeyU')) upgrades.toggle();
   if (input.isPressed('KeyF')) firePlayerWeapon();
-  if (input.isPressed('KeyV')) {
-    state.weaponMode = weapons.cycle();
-    showMessage(`WEAPON MODE ${state.weaponMode}`);
-  }
+  if (input.isPressed('KeyV')) { state.weaponMode = weapons.cycle(); showMessage(`WEAPON ${state.weaponMode}`); }
+  if (input.isPressed('Digit1')) selectAircraft('interceptor');
+  if (input.isPressed('Digit2')) selectAircraft('strike');
+  if (input.isPressed('Digit3')) selectAircraft('scout');
   if (input.isPressed('KeyG')) {
     const velocity = new THREE.Vector3();
     player.group.getWorldDirection(velocity).multiplyScalar(player.flight.speed);
@@ -232,22 +302,20 @@ engine.setUpdate((dt, input) => {
   }
 
   if (!state.gameOver) player.update(dt, input);
-
   const groundHeight = terrainHeightAt(player.group.position.x, player.group.position.z);
   if (player.group.position.y < groundHeight + 28) {
     damagePlayer(12);
     player.group.position.y = groundHeight + 32;
   }
 
-  sam.update(dt, player.group.position);
+  const mission = activeMission();
+  if (mission.requiresSAM) sam.update(dt, player.group.position);
   for (const enemy of enemies) {
     enemy.update(dt, player.group.position, state.elapsed);
-    const distance = enemy.group.position.distanceTo(player.group.position);
-    if (distance < 2200 && enemy.cooldown <= 0) fireEnemyMissile(enemy);
+    if (!state.missionCleared && enemy.group.position.distanceTo(player.group.position) < 2200 && enemy.cooldown <= 0) fireEnemyMissile(enemy);
   }
 
-  const samDistance = sam.position.distanceTo(player.group.position);
-  if (sam.alive && samDistance < sam.range && sam.cooldown <= 0) {
+  if (mission.requiresSAM && sam.alive && sam.position.distanceTo(player.group.position) < sam.range && sam.cooldown <= 0) {
     const shot = sam.fire(player.group.position);
     if (shot) {
       enemyMissiles.spawn(shot.origin, () => player.group.position.clone(), shot.velocity, shot.life, { owner: 'sam', seeker: true });
@@ -256,11 +324,9 @@ engine.setUpdate((dt, input) => {
     }
   }
 
-  const decoys = countermeasures.getTargets();
   playerMissiles.update(dt);
-  enemyMissiles.update(dt, decoys);
-
-  for (const missile of [...playerMissiles.missiles]) removeHitPlayerMissile(missile);
+  enemyMissiles.update(dt, countermeasures.getTargets());
+  for (const missile of [...playerMissiles.missiles]) handlePlayerProjectileHit(missile);
   for (const missile of [...enemyMissiles.missiles]) {
     if (missile.position.distanceTo(player.group.position) < 28) {
       damagePlayer(18);
@@ -269,45 +335,54 @@ engine.setUpdate((dt, input) => {
     }
   }
 
-  state.rwr = rwr.update(
-    player.group,
-    [{ type: 'SAM', position: sam.position, active: sam.alive, range: sam.range }],
+  completeObjectivesIfReady();
+  state.rwr = rwr.update(player.group,
+    mission.requiresSAM ? [{ type: 'SAM', position: sam.position, active: sam.alive, range: sam.range }] : [],
     enemyMissiles.missiles
   );
   if (state.rwr.alert && !engine._rwrWasAlert) showMessage('RWR — INBOUND MISSILE', 'rgba(142, 34, 62, 0.88)');
   engine._rwrWasAlert = state.rwr.alert;
 
   if (state.missionCleared && !state.missionComplete && player.group.position.distanceTo(runwayPosition) < 230) {
-    state.score += 250;
-    const latest = save.load();
-    latest.bestScore = Math.max(latest.bestScore, Math.round(state.score));
-    latest.missionsCleared = (latest.missionsCleared || 0) + 1;
-    latest.credits = (latest.credits || 0) + 30 + state.upgrades.engine * 5;
-    save.save(latest);
-    state.credits = latest.credits;
-    state.mission = 'MISSION COMPLETE';
     state.missionComplete = true;
+    state.score += 250;
+    const data = save.load();
+    save.save({
+      ...data,
+      bestScore: Math.max(data.bestScore || 0, Math.round(state.score)),
+      missionsCleared: (data.missionsCleared || 0) + 1,
+      campaignStage: campaign.stage,
+      credits: state.credits,
+      upgrades: state.upgrades,
+      airframe: state.airframe
+    });
+    state.mission = 'MISSION COMPLETE';
     state.gameOver = true;
-    showMessage(`MISSION COMPLETE — ${Math.round(state.score)} POINTS`, 'rgba(18, 62, 77, 0.9)');
+    showMessage('MISSION COMPLETE — PRESS N FOR NEXT SORTIE', 'rgba(18, 62, 77, 0.9)');
   }
 
-  if (state.missionCleared && !state.gameOver) state.score += dt * 2;
+  if (input.isPressed('KeyN') && state.missionComplete && !state.campaignComplete) advanceCampaign();
 
-  radar.draw({
-    x: player.group.position.x,
-    y: player.group.position.z,
-    heading: player.group.rotation.y
-  }, {
-    sam: sam.alive ? { x: sam.position.x, y: sam.position.z } : null,
+  radar.draw({ x: player.group.position.x, y: player.group.position.z, heading: player.group.rotation.y }, {
+    sam: mission.requiresSAM && sam.alive ? { x: sam.position.x, y: sam.position.z } : null,
     enemies: enemies.filter(e => e.alive).map(e => ({ x: e.group.position.x, y: e.group.position.z })),
     missiles: enemyMissiles.missiles.map(m => ({ x: m.position.x, y: m.position.z })),
     contacts: state.rwr.contacts
   });
-
+  upgrades.syncPanel();
   updateCamera(dt);
   updateHud();
 });
 
+const upgrades = new UpgradeSystem(save, state, upgradePanel, (ok, type) => {
+  if (!ok) { showMessage('INSUFFICIENT CREDITS OR MAX LEVEL'); return; }
+  if (type === 'engine') player.flight.airframe.acceleration += 0.28;
+  if (type === 'armor') { state.maxHealth += 12; state.health += 12; }
+  if (type === 'missiles') state.missiles += 2;
+  player.health = state.health;
+  showMessage(`${type.toUpperCase()} UPGRADED`);
+});
+
 engine.start();
-upgrades.syncPanel();
+refreshAircraftPanel();
 resetPlayer();

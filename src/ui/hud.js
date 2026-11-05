@@ -9,25 +9,19 @@ export class HUD {
       this.el.style.display = 'none';
       return;
     }
-
     this.el.style.display = 'block';
-    const rwr = data.rwr?.primary
+    const threat = data.rwr?.primary
       ? `${data.rwr.alert ? '⚠ ' : ''}${data.rwr.primary.type} ${data.rwr.primary.bearing > 0 ? '+' : ''}${data.rwr.primary.bearing}° / ${Math.round(data.rwr.primary.range)}m`
       : 'CLEAR';
-    const contacts = data.rwr?.contacts.length ? `CONTACTS ${data.rwr.contacts.length}` : 'CONTACTS 0';
     this.el.textContent = [
-      `SPD ${Math.round(data.speed)} kt`,
-      `ALT ${Math.round(data.altitude)} m`,
-      `HDG ${Math.round(data.heading)}°`,
-      `THR ${Math.round(data.throttle * 100)}%   AB ${data.afterburner ? 'ON' : 'OFF'}`,
-      `HULL ${Math.round(data.health)}%   MISSILES ${data.missiles}`,
-      `RWR ${rwr}`,
-      contacts,
-      `WEAPON ${data.mission.split('|').pop().trim()}`,
-      `FLARES ${data.flares}`,
-      `TARGET ${data.targetStatus}`,
-      `SCORE ${Math.round(data.score)}`,
-      `MISSION ${data.mission.split('|')[0].trim()}`
+      `SPD ${Math.round(data.speed)} kt   ALT ${Math.round(data.altitude)} m`,
+      `HDG ${Math.round(data.heading)}°   THR ${Math.round(data.throttle * 100)}%   AB ${data.afterburner ? 'ON' : 'OFF'}`,
+      `HULL ${Math.round(data.health)}%   ${data.targetStatus}`,
+      `RWR ${threat}`,
+      `WEAPON ${data.weaponMode}   AAM ${data.missiles}   RKT ${data.rockets}   FLR ${data.flares}`,
+      `SCORE ${Math.round(data.score)}   ${data.credits} CR`,
+      `AIRFRAME ${data.airframe}`,
+      `MISSION ${data.mission}`
     ].join('\n');
   }
 

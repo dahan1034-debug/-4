@@ -5,180 +5,33 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Mountain Thunder — Eagles of the Peaks</title>
   <style>
-    :root {
-      color-scheme: dark;
-      --panel: rgba(7, 15, 22, 0.74);
-      --glow: #7de9f8;
-      --danger: #ff5b6b;
-      --warn: #ffcf5d;
-      --ok: #7ef3ae;
-      --text: #edf8ff;
-    }
-
-    * { box-sizing: border-box; }
-    html, body {
-      margin: 0;
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      background: #08131a;
-      color: var(--text);
-      font-family: Arial, sans-serif;
-    }
-
-    #game-root {
-      position: fixed;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-    }
-
-    #hud {
-      position: fixed;
-      top: 14px;
-      left: 14px;
-      width: 300px;
-      padding: 12px 14px;
-      background: var(--panel);
-      border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 8px;
-      box-shadow: 0 10px 20px rgba(0,0,0,0.24);
-      z-index: 5;
-      backdrop-filter: blur(6px);
-      pointer-events: none;
-    }
-
-    #hud-title {
-      display: block;
-      margin-bottom: 6px;
-      font-size: 11px;
-      letter-spacing: 0.18em;
-      color: var(--glow);
-      text-transform: uppercase;
-    }
-
-    #status {
-      font-size: 12px;
-      line-height: 1.7;
-      white-space: pre-line;
-    }
-
-    #message {
-      position: fixed;
-      left: 50%;
-      top: 18px;
-      transform: translateX(-50%);
-      min-width: 260px;
-      max-width: 70vw;
-      padding: 10px 16px;
-      border-radius: 7px;
-      background: rgba(12, 28, 38, 0.82);
-      border: 1px solid rgba(255,255,255,0.15);
-      color: var(--text);
-      z-index: 20;
-      text-align: center;
-      font-weight: 700;
-      letter-spacing: 0.06em;
-      display: none;
-      text-transform: uppercase;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.25);
-    }
-
-    #controls {
-      position: fixed;
-      right: 20px;
-      bottom: 18px;
-      width: 300px;
-      padding: 10px 12px;
-      background: rgba(5, 15, 20, 0.68);
-      color: #dfeef8;
-      border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 8px;
-      font-size: 12px;
-      line-height: 1.7;
-      z-index: 6;
-      pointer-events: none;
-    }
-
-    #radar-wrap {
-      position: fixed;
-      right: 24px;
-      top: 18px;
-      width: 220px;
-      padding: 8px 8px 4px;
-      background: rgba(12, 18, 24, 0.72);
-      border-radius: 8px;
-      border: 1px solid rgba(255,255,255,0.12);
-      z-index: 4;
-    }
-
-    #radar {
-      display: block;
-      width: 100%;
-      height: 220px;
-      background: rgba(8, 18, 24, 0.9);
-      border-radius: 6px;
-    }
-
-    #upgrade-panel {
-      position: fixed;
-      left: 50%;
-      top: 50%;
-      transform: translate(-50%, -50%);
-      width: min(440px, 80vw);
-      background: rgba(12, 20, 30, 0.95);
-      border: 1px solid rgba(124, 222, 255, 0.22);
-      box-shadow: 0 20px 30px rgba(0,0,0,0.34);
-      border-radius: 12px;
-      padding: 16px;
-      z-index: 25;
-    }
-
-    #upgrade-panel[hidden] { display: none; }
-
-    .upgrade-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      margin: 10px 0;
-    }
-
-    .upgrade-btn {
-      flex: 1;
-      height: 38px;
-      border: 1px solid rgba(125, 233, 248, 0.35);
-      background: rgba(17, 36, 47, 0.88);
-      color: var(--text);
-      border-radius: 8px;
-      font-weight: 700;
-      cursor: pointer;
-    }
-
-    .small { font-size: 12px; opacity: 0.8; }
-    .ok { color: var(--ok); }
+    :root { color-scheme: dark; --panel: rgba(7,15,22,.78); --glow:#7de9f8; --danger:#ff5b6b; --warn:#ffcf5d; --ok:#7ef3ae; --text:#edf8ff; }
+    * { box-sizing:border-box; }
+    html,body { margin:0;width:100%;height:100%;overflow:hidden;background:#08131a;color:var(--text);font-family:Arial,sans-serif; }
+    #game-root { position:fixed;inset:0;width:100%;height:100%; }
+    #hud { position:fixed;top:14px;left:14px;width:320px;padding:12px 14px;background:var(--panel);border:1px solid #ffffff20;border-radius:8px;z-index:5;backdrop-filter:blur(6px);pointer-events:none; }
+    #hud-title { display:block;margin-bottom:6px;font-size:11px;letter-spacing:.18em;color:var(--glow);text-transform:uppercase; }
+    #status { font:12px/1.7 ui-monospace,monospace;white-space:pre-line; }
+    #message { position:fixed;left:50%;top:18px;transform:translateX(-50%);min-width:260px;max-width:70vw;padding:10px 16px;border-radius:7px;background:#0c1c2ed1;border:1px solid #ffffff26;z-index:20;text-align:center;font-weight:700;letter-spacing:.04em;display:none;box-shadow:0 10px 25px #0005; }
+    #controls { position:fixed;right:20px;bottom:18px;width:300px;padding:10px 12px;background:#050f14b8;border:1px solid #ffffff20;border-radius:8px;font-size:12px;line-height:1.7;z-index:6;pointer-events:none; }
+    #radar-wrap { position:fixed;right:24px;top:18px;width:220px;padding:8px 8px 4px;background:#0c1218bb;border-radius:8px;border:1px solid #ffffff20;z-index:4; }
+    #radar { display:block;width:100%;height:220px;background:#081218e6;border-radius:6px; }
+    #upgrade-panel,#aircraft-panel { position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(460px,86vw);background:#0c141ef2;border:1px solid #7cdeff38;box-shadow:0 20px 30px #0006;border-radius:12px;padding:16px;z-index:25; }
+    #upgrade-panel[hidden],#aircraft-panel[hidden] { display:none; }
+    .upgrade-row,.airframe-row { display:flex;justify-content:space-between;align-items:center;gap:10px;margin:12px 0; }
+    .upgrade-btn,.airframe-btn { flex:1;min-height:40px;border:1px solid #7de9f85c;background:#11242fde;color:var(--text);border-radius:8px;font-weight:700;cursor:pointer; }
+    .airframe-btn.selected { outline:2px solid var(--ok);color:var(--ok); }
+    .small { font-size:12px;opacity:.82;line-height:1.5; }
+    .ok { color:var(--ok); }
+    @media(max-width:700px) { #hud{width:260px;top:8px;left:8px} #radar-wrap{width:150px;right:8px;top:auto;bottom:150px} #radar{height:150px} #controls{right:8px;bottom:8px;width:calc(100% - 16px)} }
   </style>
 </head>
 <body>
   <div id="game-root"></div>
-
-  <div id="hud">
-    <span id="hud-title">Mountain Thunder</span>
-    <div id="status"></div>
-  </div>
-
-  <div id="radar-wrap">
-    <canvas id="radar"></canvas>
-  </div>
-
+  <div id="hud"><span id="hud-title">Mountain Thunder — Tactical Flight</span><div id="status"></div></div>
+  <div id="radar-wrap"><canvas id="radar"></canvas></div>
   <div id="message"></div>
-
-  <div id="controls">
-    W/S pitch · A/D roll · Q/E yaw<br />
-    Shift/Ctrl throttle · Space afterburner<br />
-    F fire weapon · G flare · V cycle weapon · U upgrades · R reset · H HUD
-  </div>
-
+  <div id="controls">W/S pitch · A/D roll · Q/E yaw · Shift/Ctrl throttle · Space afterburner<br>F fire · V weapon · G flare · 1/2/3 aircraft · U upgrades · N next sortie · R restart · H HUD</div>
   <div id="upgrade-panel" hidden>
     <div class="small ok" data-stat="credits">Credits 0</div>
     <div class="upgrade-row">
@@ -186,9 +39,18 @@
       <button class="upgrade-btn" data-upgrade="armor">Armor 0 / 3</button>
       <button class="upgrade-btn" data-upgrade="missiles">Missiles 0 / 3</button>
     </div>
-    <div class="small">Each upgrade costs 35 credits. Upgrades are stored in localStorage.</div>
+    <div class="small">Each level costs 35 credits. Engine improves acceleration; armor adds hull; missiles add payload.</div>
   </div>
-
+  <div id="aircraft-panel">
+    <strong>FORWARD BASE · AIRFRAME SELECT</strong>
+    <div class="airframe-row">
+      <button class="airframe-btn" data-airframe="interceptor">1 · Interceptor</button>
+      <button class="airframe-btn" data-airframe="strike">2 · Striker</button>
+      <button class="airframe-btn" data-airframe="scout">3 · Scout</button>
+    </div>
+    <div class="small" data-airframe-description></div>
+    <div class="small">Choose an airframe before launch. Press U to manage upgrades; press R to sortie.</div>
+  </div>
   <script type="module" src="./src/main.js"></script>
 </body>
 </html>

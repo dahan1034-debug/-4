@@ -10,17 +10,11 @@ export class MissileManager {
   spawn(origin, target, speed = 260, life = 6, options = {}) {
     const mesh = new THREE.Mesh(
       new THREE.ConeGeometry(1.8, 16, 10),
-      new THREE.MeshStandardMaterial({
-        color: this.color,
-        emissive: this.color,
-        emissiveIntensity: 0.4,
-        metalness: 0.7,
-        roughness: 0.4
-      })
+      new THREE.MeshStandardMaterial({ color: this.color, emissive: this.color, emissiveIntensity: 0.4, metalness: 0.7, roughness: 0.4 })
     );
     mesh.position.copy(origin);
 
-    const targetRef = typeof target === 'function' ? target : () => target;
+    const targetRef = typeof target === 'function' ? target : () => target.clone();
     const initialTarget = targetRef();
     const direction = initialTarget.clone().sub(origin).normalize();
     mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
@@ -52,9 +46,11 @@ export class MissileManager {
         if (candidate && Math.random() < 0.22) data.decoyTarget = candidate.position;
       }
 
-      const target = data.decoyTarget ?? data.targetRef();
-      const desired = target.clone().sub(missile.position).normalize();
-      data.direction.lerp(desired, Math.min(1, dt * 2.4)).normalize();
+      if (data.seeker) {
+        const target = data.decoyTarget ?? data.targetRef();
+        const desired = target.clone().sub(missile.position).normalize();
+        data.direction.lerp(desired, Math.min(1, dt * 2.4)).normalize();
+      }
       missile.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), data.direction);
       missile.position.addScaledVector(data.direction, data.velocity * dt);
 

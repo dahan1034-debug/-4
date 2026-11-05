@@ -1,46 +1,42 @@
 # Mountain Thunder — Eagles of the Peaks
 
-A browser-based Three.js flight-combat prototype with a multi-mode weapons system, a radar overlay, and an upgrade economy. This phase adds mission depth, weapon diversity, and more responsive combat feel.
+Browser-based Three.js flight-combat prototype featuring a three-sortie campaign, selectable aircraft, tactical radar/RWR, flares, multi-mode weapons, enemy interceptors, and persistent upgrades.
 
 ## Run locally
 
-Because the project uses ES modules, serve it over HTTP:
+ES modules require an HTTP server rather than direct `file://` access:
 
 ```bash
-cd /path/to/project
 python3 -m http.server 8000
 ```
 
-Then open:
-
-```text
-http://localhost:8000/
-```
+Open `http://localhost:8000/`.
 
 ## Controls
 
-- `W / S`: pitch
-- `A / D`: roll
-- `Q / E`: yaw
-- `Shift / Ctrl`: throttle
-- `Space`: afterburner
-- `V`: cycle weapon mode
-- `F`: fire selected weapon
-- `G`: release flare
-- `U`: upgrade panel
-- `R`: restart mission
-- `H`: toggle HUD
+- `W / S`: pitch; `A / D`: roll; `Q / E`: yaw
+- `Shift / Ctrl`: throttle; `Space`: afterburner
+- `1 / 2 / 3`: Peak Interceptor / Ridge Striker / Valley Scout
+- `V`: cycle missile, cannon, rocket; `F`: fire selected weapon
+- `G`: release flare; `U`: upgrade panel
+- `N`: advance campaign after mission success; `R`: restart current sortie; `H`: toggle HUD
 
-## Weapon modes
+## Campaign
 
-- `MISSILE`: guided strike weapon
-- `CANNON`: short burst anti-air fire
-- `ROCKET`: cluster payload for area pressure
+1. Mountain Shield: destroy the SAM site and return to the forward runway.
+2. Falcon Hunt: destroy both interceptors and return.
+3. Storm Breaker: destroy the SAM site and both interceptors, then return.
 
-## Gameplay loop
+Completing the last sortie finishes the campaign. Progress, credits, airframe selection, and upgrades are stored in browser localStorage.
 
-Destroy the forward SAM site, evade enemy missiles, and return to the runway to complete the mission. Credits are awarded for successful engagements and stage completion.
+## Aircraft
 
-## Notes
+- **Peak Interceptor:** highest top speed and payload, lower hull.
+- **Ridge Striker:** balanced speed and reinforced hull.
+- **Valley Scout:** strongest turn authority, lighter payload.
 
-This remains an arcade prototype tuned for browser performance, not a military-accurate flight sim. The underlying project is modular and built for future expansion with sound layers, campaign logic, and deeper cockpit detail.
+Airframe attributes affect the flight model and loadout; upgrades modify acceleration, hull capacity, and missile payload.
+
+## Scope
+
+This is an arcade combat prototype, not a realistic military simulator. Terrain, aircraft, weapons, and effects are generated procedurally. Networking/co-op, replay, and full simulation flight dynamics remain future work.
